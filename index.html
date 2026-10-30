@@ -345,21 +345,31 @@ function renderTournaments(status) {
 async function checkAdminAccess() {
   const panel = document.getElementById("adminPanel");
   const label = document.getElementById("adminStatus");
+  const authStatus = document.getElementById("authStatus");
   if (!panel || !label) return;
   panel.style.display = "none";
-  if (!currentUser) return;
+  if (!currentUser) {
+    if (authStatus) authStatus.textContent = "You are not logged in. Log in with your admin account to open Admin Panel.";
+    return;
+  }
+  if (authStatus) authStatus.textContent = "Logged in: " + (currentUser.email || "player") + " · Checking admin access…";
   const { data, error } = await supabaseClient
     .from("admin_users")
     .select("user_id")
     .eq("user_id", currentUser.id)
     .maybeSingle();
   if (error) {
-    label.textContent = "Admin permission check failed: " + error.message;
+    label.textContent = "Admin check error: " + error.message;
+    if (authStatus) authStatus.textContent = "Admin check error: " + error.message;
     return;
   }
-  if (!data) return;
+  if (!data) {
+    if (authStatus) authStatus.textContent = "Logged in, but this account is not listed as an admin. Admin account ID: " + currentUser.id;
+    return;
+  }
   panel.style.display = "block";
   label.textContent = "Admin access enabled.";
+  if (authStatus) authStatus.textContent = "Admin access enabled for " + (currentUser.email || "your account") + ".";
   await renderAdminTournamentList();
 }
 
