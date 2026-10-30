@@ -36,6 +36,14 @@
     nav{position:fixed;bottom:0;left:0;right:0;background:#000;display:flex;justify-content:space-around;padding:13px 2px;border-top:1px solid #292929}
     nav button{border:0;background:transparent;padding:7px 3px;font-size:12px;color:#a8adb8}
     nav button.active{color:#ffc928;background:transparent}
+
+    .admin-panel{display:none;margin:16px;padding:16px;border:1px solid #ffc928;border-radius:14px;background:#10130f}
+    .admin-panel h2{padding:0;margin:0 0 12px;color:#ffc928}
+    .admin-panel input,.admin-panel select{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #544500;background:#080a08;color:white}
+    .admin-panel .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .admin-panel .admin-actions button{flex:1}
+    .admin-item{border-top:1px solid #393000;padding:10px 0}
+    .admin-item button{margin:4px 4px 0 0}
     @media(max-width:520px){.grid{grid-template-columns:1fr}.logo{font-size:21px}}
   </style>
 </head>
@@ -63,6 +71,28 @@
     <button onclick="signOut()">Log out</button>
   </div>
   <p class="small">Use your own email. Supabase may ask you to confirm your email before logging in.</p>
+</section>
+
+
+<section class="admin-panel" id="adminPanel">
+  <h2>Admin Panel · Tournament Management</h2>
+  <p class="muted" id="adminStatus">Checking admin access…</p>
+  <form id="tournamentForm">
+    <input id="tTitle" placeholder="Tournament title" required>
+    <input id="tMode" placeholder="Game mode (e.g. Solo / Duo / Squad)">
+    <input id="tMap" placeholder="Map name">
+    <select id="tStatus"><option>Upcoming</option><option>Ongoing</option><option>Completed</option></select>
+    <input id="tPrize" type="number" min="0" step="1" placeholder="Prize pool (display only)">
+    <input id="tEntry" type="number" min="0" step="1" placeholder="Entry fee (display only)">
+    <label class="small" for="tTime">Match date and time</label>
+    <input id="tTime" type="datetime-local">
+    <div class="admin-actions">
+      <button class="primary" type="submit" id="saveTournamentBtn">Create tournament</button>
+      <button type="button" onclick="resetTournamentForm()">Clear form</button>
+    </div>
+  </form>
+  <h3>Manage tournaments</h3>
+  <div id="adminTournamentList" class="muted">Loading…</div>
 </section>
 
 <div class="tabs">
@@ -132,6 +162,7 @@ async function updateAuthStatus() {
   } else {
     status.textContent = "You are not logged in. Create an account or log in to join.";
   }
+  await checkAdminAccess();
 }
 
 
@@ -310,6 +341,132 @@ function renderTournaments(status) {
   });
 }
 
+
+async function checkAdminAccess() {
+  const panel = document.getElementById("adminPanel");
+  const label = document.getElementById("adminStatus");
+  if (!panel || !label) return;
+  panel.style.display = "none";
+  if (!currentUser) return;
+  const { data, error } = await supabaseClient
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (error) {
+    label.textContent = "Admin permission check failed: " + error.message;
+    return;
+  }
+  if (!data) return;
+  panel.style.display = "block";
+  label.textContent = "Admin access enabled.";
+  await renderAdminTournamentList();
+}
+
+function resetTournamentForm() {
+  const form = document.getElementById("tournamentForm");
+  if (form) form.reset();
+  document.getElementById("saveTournamentBtn").textContent = "Create tournament";
+  document.getElementById("tournamentForm").dataset.editId = "";
+}
+
+async function renderAdminTournamentList() {
+  const host = document.getElementById("adminTournamentList");
+  if (!host || !currentUser) return;
+  const { data, error } = await supabaseClient
+    .from("tournaments")
+    .select("id,title,status")
+    .order("created_at", { ascending: false });
+  if (error) {
+    host.textContent = "Could not load tournaments: " + error.message;
+    return;
+  }
+  host.replaceChildren();
+  if (!data || data.length === 0) {
+    host.textContent = "No tournaments yet.";
+    return;
+  }
+  data.forEach(t => {
+    const item = document.createElement("div");
+    item.className = "admin-item";
+    const name = document.createElement("strong");
+    name.textContent = t.title || "Untitled tournament";
+    const state = document.createElement("span");
+    state.className = "small";
+    state.textContent = " · " + (t.status || "");
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = "Edit";
+    edit.onclick = () => editTournament(t.id);
+    const del = document.createElement("button");
+    del.type = "button";
+    del.textContent = "Delete";
+    del.onclick = () => deleteTournament(t.id);
+    item.append(name, state, document.createElement("br"), edit, del);
+    host.appendChild(item);
+  });
+}
+
+async function editTournament(id) {
+  const { data, error } = await supabaseClient.from("tournaments").select("*").eq("id", id).single();
+  if (error || !data) {
+    showNotice("Tournament open nahi hua: " + (error ? error.message : "Not found"));
+    return;
+  }
+  document.getElementById("tTitle").value = data.title || "";
+  document.getElementById("tMode").value = data.game_mode || "";
+  document.getElementById("tMap").value = data.map_name || "";
+  document.getElementById("tStatus").value = normalizeStatus(data.status);
+  document.getElementById("tPrize").value = data.prize_pool ?? 0;
+  document.getElementById("tEntry").value = data.entry_fee ?? 0;
+  if (data.match_time) {
+    const d = new Date(data.match_time);
+    document.getElementById("tTime").value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  } else document.getElementById("tTime").value = "";
+  document.getElementById("tournamentForm").dataset.editId = id;
+  document.getElementById("saveTournamentBtn").textContent = "Save changes";
+  document.getElementById("adminPanel").scrollIntoView({behavior:"smooth"});
+}
+
+async function saveTournament(event) {
+  event.preventDefault();
+  if (!currentUser) return showNotice("Admin login required.");
+  const editId = document.getElementById("tournamentForm").dataset.editId;
+  const matchTime = getField("tTime");
+  const payload = {
+    title: getField("tTitle"),
+    game_mode: getField("tMode") || null,
+    map_name: getField("tMap") || null,
+    status: getField("tStatus"),
+    prize_pool: Number(getField("tPrize") || 0),
+    entry_fee: Number(getField("tEntry") || 0),
+    match_time: matchTime ? new Date(matchTime).toISOString() : null
+  };
+  const result = editId
+    ? await supabaseClient.from("tournaments").update(payload).eq("id", editId)
+    : await supabaseClient.from("tournaments").insert(payload);
+  if (result.error) {
+    showNotice("Tournament save nahi hua: " + result.error.message);
+    return;
+  }
+  resetTournamentForm();
+  showNotice(editId ? "Tournament updated." : "Tournament created.");
+  await loadTournaments();
+  await renderAdminTournamentList();
+}
+
+async function deleteTournament(id) {
+  if (!confirm("Is tournament ko delete karna hai?")) return;
+  const { error } = await supabaseClient.from("tournaments").delete().eq("id", id);
+  if (error) {
+    showNotice("Delete nahi hua: " + error.message);
+    return;
+  }
+  showNotice("Tournament deleted.");
+  await loadTournaments();
+  await renderAdminTournamentList();
+}
+
 function showMatches(status, btn) {
   currentStatus = status;
   document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
@@ -350,6 +507,7 @@ function page(name, btn) {
   hideNotice();
 }
 
+document.getElementById("tournamentForm").addEventListener("submit", saveTournament);
 updateAuthStatus();
 loadTournaments();
 </script>
