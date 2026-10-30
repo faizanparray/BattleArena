@@ -27,6 +27,12 @@
     .prize{color:#ffc928;font-size:21px;font-weight:bold}
     .card button{width:100%;margin-top:12px}
     #notice{margin:15px;padding:12px;border-radius:8px;background:#17251a;color:#a8f5bc;display:none;overflow-wrap:anywhere}
+    .auth-panel{margin:16px;padding:16px;border:1px solid #393000;border-radius:14px;background:#10130f}
+    .auth-panel h2{padding:0;margin:0 0 12px}
+    .auth-panel input{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #544500;background:#080a08;color:white}
+    .auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .auth-actions button{flex:1}
+    .small{font-size:12px;color:#a9adb7}
     nav{position:fixed;bottom:0;left:0;right:0;background:#000;display:flex;justify-content:space-around;padding:13px 2px;border-top:1px solid #292929}
     nav button{border:0;background:transparent;padding:7px 3px;font-size:12px;color:#a8adb8}
     nav button.active{color:#ffc928;background:transparent}
@@ -43,6 +49,20 @@
   <p class="gold">YOUR NEXT MATCH STARTS HERE</p>
   <h1>PLAY. COMPETE.<br><span class="gold">RISE UP.</span></h1>
   <p class="muted">Join tournaments and track your progress.</p>
+</section>
+
+<section class="auth-panel">
+  <h2>Player Account</h2>
+  <p class="muted" id="authStatus">You are not logged in.</p>
+  <input id="playerName" autocomplete="nickname" placeholder="Player name (for registration)">
+  <input id="email" type="email" autocomplete="email" placeholder="Email address">
+  <input id="password" type="password" autocomplete="current-password" placeholder="Password (at least 6 characters)">
+  <div class="auth-actions">
+    <button class="primary" onclick="signUp()">Create account</button>
+    <button onclick="signIn()">Log in</button>
+    <button onclick="signOut()">Log out</button>
+  </div>
+  <p class="small">Use your own email. Supabase may ask you to confirm your email before logging in.</p>
 </section>
 
 <div class="tabs">
@@ -94,6 +114,109 @@ function normalizeStatus(status) {
   if (s === "ongoing" || s === "live") return "Ongoing";
   if (s === "completed" || s === "finished") return "Completed";
   return String(status || "Upcoming");
+}
+
+
+let currentUser = null;
+
+function getField(id) {
+  return document.getElementById(id).value.trim();
+}
+
+async function updateAuthStatus() {
+  const { data, error } = await supabaseClient.auth.getUser();
+  currentUser = (!error && data && data.user) ? data.user : null;
+  const status = document.getElementById("authStatus");
+  if (currentUser) {
+    status.textContent = "Logged in: " + (currentUser.email || "player");
+  } else {
+    status.textContent = "You are not logged in. Create an account or log in to join.";
+  }
+}
+
+async function signUp() {
+  const email = getField("email");
+  const password = getField("password");
+  const playerName = getField("playerName");
+  if (!email || !password || password.length < 6 || !playerName) {
+    showNotice("Player name, valid email, and password of at least 6 characters are required.");
+    return;
+  }
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: { data: { player_name: playerName } }
+  });
+  if (error) {
+    showNotice("Account create nahi hua: " + error.message);
+    return;
+  }
+  if (data.session) {
+    currentUser = data.user;
+    await updateAuthStatus();
+    showNotice("Account created and logged in. You can now join a tournament.");
+  } else {
+    showNotice("Account request successful. Check your email for a confirmation link, then log in.");
+  }
+}
+
+async function signIn() {
+  const email = getField("email");
+  const password = getField("password");
+  if (!email || !password) {
+    showNotice("Email aur password enter karo.");
+    return;
+  }
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    showNotice("Login nahi hua: " + error.message);
+    return;
+  }
+  currentUser = data.user;
+  await updateAuthStatus();
+  showNotice("Login successful. Ab Join Tournament dabao.");
+}
+
+async function signOut() {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) {
+    showNotice("Logout nahi hua: " + error.message);
+    return;
+  }
+  currentUser = null;
+  await updateAuthStatus();
+  showNotice("You have logged out.");
+}
+
+async function joinTournament(tournament) {
+  const { data, error: authError } = await supabaseClient.auth.getUser();
+  const user = data && data.user;
+  if (authError || !user) {
+    showNotice("Tournament join karne ke liye pehle Player Account mein log in karo.");
+    document.getElementById("email").focus();
+    return;
+  }
+  const playerName = getField("playerName") ||
+    (user.user_metadata && user.user_metadata.player_name) ||
+    (user.email ? user.email.split("@")[0] : "Player");
+
+  const { error } = await supabaseClient
+    .from("registrations")
+    .insert({
+      tournament_id: tournament.id,
+      user_id: user.id,
+      player_name: playerName
+    });
+
+  if (error) {
+    if (error.code === "23505") {
+      showNotice("Aap is tournament ke liye pehle se registered ho.");
+    } else {
+      showNotice("Registration save nahi hui: " + error.message);
+    }
+    return;
+  }
+  showNotice("Successfully registered for " + (tournament.title || "this tournament") + "!");
 }
 
 async function loadTournaments() {
@@ -168,10 +291,8 @@ function renderTournaments(status) {
 
     const btn = document.createElement("button");
     btn.className = "primary";
-    btn.textContent = "View Match";
-    btn.addEventListener("click", () => {
-      showNotice((t.title || "Tournament") + " selected. Registration is not connected yet.");
-    });
+    btn.textContent = "Join Tournament";
+    btn.addEventListener("click", () => joinTournament(t));
 
     card.append(mode, title, info, time, prize, entry, btn);
     matches.appendChild(card);
@@ -218,6 +339,7 @@ function page(name, btn) {
   hideNotice();
 }
 
+updateAuthStatus();
 loadTournaments();
 </script>
 </body>
