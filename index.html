@@ -1,7 +1,8 @@
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#050705">
@@ -71,9 +72,22 @@ nav button.active{color:#ffc928;background:transparent}
   <button onclick="page('Rewards',this)">🎁<br>Rewards</button>
   <button onclick="page('Profile',this)">●<br>Profile</button>
 </nav>
+const SUPABASE_URL = "nhihttps://jiyhcuzaixgbhhlsdqav.supabase.co/rest/v1/";
+const SUPABASE_KEY = "sb_publishable_RvG39Gcn-9GETyR9EiOR7Q_cEWoyM8d";
 
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 <script>
-const data=[
+const data=
+  [const SUPABASE_URL = "https://jiyhcuzaixgbhhlsdqav.supabase.co";
+const SUPABASE_KEY = "sb_publishable_RvG39Gcn-9GETyR9EiOR7Q_cEWoyM8d";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
  {name:'Solo Challenge',mode:'Solo',status:'Upcoming',prize:450,map:'Bermuda'},
  {name:'Lone Wolf',mode:'1 vs 1',status:'Upcoming',prize:200,map:'Training'},
  {name:'Clash Squad',mode:'4 vs 4',status:'Ongoing',prize:300,map:'Bermuda'},
