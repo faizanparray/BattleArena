@@ -1,1 +1,119 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050705">
+<title>Battle Arena</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050705;color:white;
+font-family:Arial,sans-serif;padding-bottom:85px}
+header{padding:22px 18px;border-bottom:1px solid #302700;
+display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:25px;font-weight:900;color:#ffc928}
+.coins{border:1px solid #ffc928;padding:10px;border-radius:10px}
+.banner{margin:16px;padding:22px;border-radius:16px;
+background:linear-gradient(130deg,#302400,#101410);
+border:1px solid #755d00}
+.banner h1{font-size:28px;margin:5px 0}
+.gold{color:#ffc928}
+.tabs{display:flex;gap:8px;padding:0 12px}
+button{cursor:pointer;font-weight:bold;border-radius:10px;
+border:1px solid #544500;background:#151713;color:white;padding:12px}
+.tabs button{flex:1}
+button.active,.primary{background:#ffc928;color:#080808}
+h2{padding:0 16px;margin-top:28px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}
+.card{background:#10130f;border:1px solid #393000;
+border-radius:13px;padding:14px}
+.card h3{font-size:17px}
+.muted{color:#a9adb7;font-size:14px;line-height:1.6}
+.prize{color:#ffc928;font-size:21px;font-weight:bold}
+.card button{width:100%;margin-top:12px}
+#notice{margin:15px;padding:12px;border-radius:8px;
+background:#17251a;color:#a8f5bc;display:none}
+nav{position:fixed;bottom:0;left:0;right:0;background:#000;
+display:flex;justify-content:space-around;padding:13px 2px;
+border-top:1px solid #292929}
+nav button{border:0;background:transparent;padding:7px 3px;
+font-size:12px;color:#a8adb8}
+nav button.active{color:#ffc928;background:transparent}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚡ BATTLE ARENA</div>
+  <div class="coins">🪙 <span id="coins">100</span></div>
+</header>
+
+<section class="banner">
+  <p class="gold">YOUR NEXT MATCH STARTS HERE</p>
+  <h1>PLAY. COMPETE.<br><span class="gold">RISE UP.</span></h1>
+  <p class="muted">Join tournaments and track your progress.</p>
+</section>
+
+<div class="tabs">
+  <button class="active" onclick="showMatches('Upcoming',this)">Upcoming</button>
+  <button onclick="showMatches('Ongoing',this)">Ongoing</button>
+  <button onclick="showMatches('Completed',this)">Completed</button>
+</div>
+
+<h2 id="heading">Upcoming Tournaments</h2>
+<div id="notice"></div>
+<div class="grid" id="matches"></div>
+
+<nav>
+  <button class="active" onclick="page('Home',this)">⌂<br>Home</button>
+  <button onclick="page('Wallet',this)">▣<br>Wallet</button>
+  <button onclick="page('Leaderboard',this)">🏆<br>Ranks</button>
+  <button onclick="page('Rewards',this)">🎁<br>Rewards</button>
+  <button onclick="page('Profile',this)">●<br>Profile</button>
+</nav>
+
+<script>
+const data=[
+ {name:'Solo Challenge',mode:'Solo',status:'Upcoming',prize:450,map:'Bermuda'},
+ {name:'Lone Wolf',mode:'1 vs 1',status:'Upcoming',prize:200,map:'Training'},
+ {name:'Clash Squad',mode:'4 vs 4',status:'Ongoing',prize:300,map:'Bermuda'},
+ {name:'Full Map Battle',mode:'Squad',status:'Completed',prize:500,map:'Bermuda'}
+];
+function showMatches(status,btn){
+ document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+ if(btn)btn.classList.add('active');
+ document.getElementById('heading').textContent=status+' Tournaments';
+ document.getElementById('matches').innerHTML=data.filter(m=>m.status===status).map((m,i)=>`
+ <article class="card">
+ <p class="gold">${m.mode}</p>
+ <h3>${m.name}</h3>
+ <p class="muted">${m.map}<br>${m.status}</p>
+ <p class="muted">Demo prize pool</p>
+ <div class="prize">🪙 ${m.prize}</div>
+ <button class="primary" onclick="join('${m.name}')">View Match</button>
+ </article>`).join('')||'<p class="muted">No matches here yet.</p>';
+}
+function join(name){
+ const n=document.getElementById('notice');
+ n.style.display='block';
+ n.textContent=name+' selected. Demo only; no real entry fee.';
+}
+function page(name,btn){
+ document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ if(name==='Home'){showMatches('Upcoming',document.querySelector('.tabs button'));return}
+ document.getElementById('heading').textContent=name;
+ document.getElementById('matches').innerHTML=
+ '<div class="card"><h3>'+name+'</h3><p class="muted">'+
+ ({Wallet:'Demo coins: '+document.getElementById('coins').textContent,
+ Leaderboard:'Rankings will appear here.',
+ Rewards:'Demo rewards coming soon.',
+ Profile:'Player profile coming soon.'}[name])+
+ '</p></div>';
+ document.getElementById('notice').style.display='none';
+}
+showMatches('Upcoming',document.querySelector('.tabs button'));
+</script>
+</body>
+</html>
+
