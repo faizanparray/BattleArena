@@ -134,31 +134,42 @@ async function updateAuthStatus() {
   }
 }
 
+
 async function signUp() {
   const email = getField("email");
   const password = getField("password");
   const playerName = getField("playerName");
+
   if (!email || !password || password.length < 6 || !playerName) {
     showNotice("Player name, valid email, and password of at least 6 characters are required.");
     return;
   }
+
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
-    options: { data: { player_name: playerName } }
+    options: {
+      data: {
+        player_name: playerName
+      },
+      emailRedirectTo: "https://faizanparray.github.io/BattleArena/"
+    }
   });
+
   if (error) {
     showNotice("Account create nahi hua: " + error.message);
     return;
   }
+
   if (data.session) {
     currentUser = data.user;
     await updateAuthStatus();
     showNotice("Account created and logged in. You can now join a tournament.");
   } else {
-    showNotice("Account request successful. Check your email for a confirmation link, then log in.");
+    showNotice("Account created! Please check your email and confirm your account.");
   }
 }
+  
 
 async function signIn() {
   const email = getField("email");
