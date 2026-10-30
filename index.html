@@ -88,6 +88,22 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
+  async function loadTournaments() {
+  const { data, error } = await supabaseClient
+    .from('tournaments')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Tournament loading error:', error.message);
+    document.getElementById('notice').style.display = 'block';
+    document.getElementById('notice').textContent =
+      'Tournaments load nahi hue: ' + error.message;
+    return;
+  }
+
+  console.log('Supabase tournaments:', data);
+  }
  {name:'Solo Challenge',mode:'Solo',status:'Upcoming',prize:450,map:'Bermuda'},
  {name:'Lone Wolf',mode:'1 vs 1',status:'Upcoming',prize:200,map:'Training'},
  {name:'Clash Squad',mode:'4 vs 4',status:'Ongoing',prize:300,map:'Bermuda'},
