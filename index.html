@@ -114,6 +114,80 @@ function page(name,btn){
 }
 showMatches('Upcoming',document.querySelector('.tabs button'));
 </script>
+
+<!-- Supabase connection -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = https://jiyhcuzaixgbhhlsdqav.supabase.co/rest/v1/;
+const SUPABASE_KEY = sb_publishable_RvG39Gcn-9GETyR9EiOR7Q_cEWoyM8d;
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+async function loadRealTournaments() {
+  const notice = document.getElementById("notice");
+  const matches = document.getElementById("matches");
+
+  try {
+    const { data, error } = await db
+      .from("tournaments")
+      .select("id,title,game_mode,map_name,status,prize_pool,entry_fee,match_time")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    matches.replaceChildren();
+
+    if (!data || data.length === 0) {
+      matches.textContent = "No tournaments yet. Add one in Supabase.";
+      return;
+    }
+
+    data.forEach(t => {
+      const card = document.createElement("article");
+      card.className = "card";
+
+      const mode = document.createElement("p");
+      mode.className = "gold";
+      mode.textContent = t.game_mode || "Solo";
+
+      const title = document.createElement("h3");
+      title.textContent = t.title;
+
+      const info = document.createElement("p");
+      info.className = "muted";
+      info.textContent =
+        (t.map_name || "Map not set") + " • " + t.status;
+
+      const prize = document.createElement("p");
+      prize.className = "prize";
+      prize.textContent = "Prize: ₹" + Number(t.prize_pool || 0);
+
+      const entry = document.createElement("p");
+      entry.className = "muted";
+      entry.textContent = "Entry: ₹" + Number(t.entry_fee || 0);
+
+      card.append(mode, title, info, prize, entry);
+      matches.appendChild(card);
+    });
+
+    if (notice) notice.style.display = "none";
+  } catch (error) {
+    console.error("Supabase error:", error);
+    if (notice) {
+      notice.style.display = "block";
+      notice.textContent =
+        "Could not load tournaments. Check your Supabase URL, key and table policies.";
+    }
+  }
+}
+
+loadRealTournaments();
+</script>
+</body>
+</html>
 </body>
 </html>
 
